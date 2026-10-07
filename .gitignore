@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.db
+*.db.*
+uploads/*
+!uploads/.gitkeep
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Env
+.env
+
+# Logs & local artifacts
+*.log
+
+# OS / editor
+.DS_Store
+Thumbs.db

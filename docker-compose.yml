@@ -1,0 +1,25 @@
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      # Swap to PostgreSQL for production:
+      # DATABASE_URL: postgresql+psycopg://govinnovate:govinnovate@db:5432/govinnovate
+      DATABASE_URL: sqlite:///./govinnovate.db
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+      CORS_ORIGINS: http://localhost:5173,http://localhost:8080
+    volumes:
+      - uploads:/app/uploads
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  uploads:
