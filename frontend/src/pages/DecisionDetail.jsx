@@ -65,7 +65,9 @@ export default function DecisionDetail({ notify }) {
           <h1 className="text-primary text-headline-lg font-bold">{pilot.name}</h1>
           <p className="mt-1 text-[13px] text-ink-2">{pilot.startup_name} · {pilot.department} · status {label(pilot.status)}</p>
         </div>
-        <button className="btn-primary" onClick={generate} disabled={busy}>{busy ? 'Evaluating…' : '✦ Generate / Refresh Recommendation'}</button>
+        {['government_officer', 'administrator'].includes(user?.role) && (
+          <button className="btn-primary" onClick={generate} disabled={busy}>{busy ? 'Evaluating…' : '✦ Generate / Refresh Recommendation'}</button>
+        )}
       </header>
 
       {!rec ? (

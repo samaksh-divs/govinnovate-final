@@ -17,6 +17,8 @@ dist/
 
 # Logs & local artifacts
 *.log
+frontend/vite*.log
+backend/backend_*.log
 
 # OS / editor
 .DS_Store

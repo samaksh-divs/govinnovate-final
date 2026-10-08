@@ -4,6 +4,7 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-route
 import './index.css';
 import { api, clearAuth, getToken, getUser, setAuth } from './services/api';
 import Shell from './components/Shell';
+import RoleGate from './components/RoleGate';
 import { Loading, Toast } from './components/ui';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -62,6 +63,7 @@ function App() {
 
   return (
     <Shell onRoleSwitch={handleRoleSwitch} notify={notify}>
+      <RoleGate>
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<Dashboard notify={notify} />} />
@@ -93,6 +95,7 @@ function App() {
         <Route path="/system" element={<SystemHealth notify={notify} />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
+      </RoleGate>
       <Toast toast={toast} />
       {/* keep location referenced for future breadcrumbs */}
       <span className="hidden">{location.pathname}</span>

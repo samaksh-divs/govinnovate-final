@@ -17,7 +17,7 @@ from app.routers.evaluations_router import router as evaluations_router
 from app.routers.evidence_router import router as evidence_router
 from app.routers.govdata_router import router as govdata_router
 from app.routers.knowledge_router import router as knowledge_router
-from app.routers.meta_routers import (analytics_router, audit_router, search_router,
+from app.routers.meta_routers import (admin_router, analytics_router, audit_router, search_router,
                                       system_router)
 from app.routers.pilots_router import router as pilots_router
 from app.routers.startups_router import match_router, router as startups_router
@@ -58,7 +58,7 @@ app.add_middleware(
 for r in (auth_router, challenges_router, startups_router, match_router, evaluations_router,
           pilots_router, evidence_router, validation_router, knowledge_router, decisions_router,
           scale_router, proc_router, repilot_router, analytics_router, audit_router, system_router,
-          search_router, govdata_router, demo_router):
+          search_router, govdata_router, demo_router, admin_router):
     app.include_router(r)
 
 

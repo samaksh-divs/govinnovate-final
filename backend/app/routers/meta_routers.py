@@ -231,3 +231,28 @@ def global_search(q: str, db: Session = Depends(get_db),
     except Exception:
         pass
     return {"results": results[:20], "count": len(results)}
+
+
+# ---------------------------------------------------------------------------
+# Administrator: read-only user registry for the Admin dashboard (USER_MANAGE).
+admin_router = APIRouter(prefix="/api/admin", tags=["admin"])
+
+
+@admin_router.get("/users")
+def list_users(db: Session = Depends(get_db),
+               user: User = Depends(require("USER_MANAGE"))):
+    """Platform user registry for the Administrator persona. Read-only:
+    account creation/management remains a provisioning exercise, not UI."""
+    users = db.query(User).order_by(User.role, User.name).all()
+    by_role: dict[str, int] = {}
+    for u in users:
+        by_role[u.role] = by_role.get(u.role, 0) + 1
+    return {
+        "users": [{"id": u.id, "name": u.name, "email": u.email, "role": u.role,
+                   "role_label": ROLE_LABELS.get(u.role, u.role),
+                   "organization": u.organization, "is_active": u.is_active}
+                  for u in users],
+        "counts_by_role": by_role,
+        "total": len(users),
+        "note": "Derived from the shared user table; no parallel registry exists.",
+    }

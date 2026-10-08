@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { api } from '../services/api';
+import { api, getUser } from '../services/api';
+import { can } from '../lib/personas';
 import { Badge, Card, ErrorState, Loading, MetricCard, PipelineStepper } from '../components/ui';
 import { DataTag } from '../components/provenance';
 import { inr, label } from '../lib/format';
@@ -11,6 +12,7 @@ export default function PilotDetail({ notify }) {
   const [readiness, setReadiness] = useState(null);
   const [error, setError] = useState(null);
   const nav = useNavigate();
+  const role = getUser()?.role;
 
   const load = useCallback(() => {
     api.get(`/api/pilots/${id}`).then(setP).catch(setError);
@@ -44,17 +46,17 @@ export default function PilotDetail({ notify }) {
         <div className="flex flex-col items-end gap-2">
           <Badge value={p.status} />
           <div className="flex gap-2">
-            {p.status === 'DRAFT' && (
+            {p.status === 'DRAFT' && can(role, 'PILOT_APPROVE') && (
               <button className="btn-primary" onClick={() => action(() => api.post(`/api/pilots/${id}/approve`), 'Pilot sent for startup acceptance')}>
                 Submit for approval
               </button>
             )}
-            {p.status === 'PENDING_APPROVAL' && (
+            {p.status === 'PENDING_APPROVAL' && can(role, 'PILOT_TRANSITION') && (
               <button className="btn-primary" onClick={() => action(() => api.post(`/api/pilots/${id}/transition?to_status=READY_TO_START`), 'Agreement accepted — pilot ready to start')}>
                 Accept (startup)
               </button>
             )}
-            {p.status === 'READY_TO_START' && (
+            {p.status === 'READY_TO_START' && can(role, 'PILOT_TRANSITION') && (
               <button className="btn-primary" onClick={() => action(() => api.post(`/api/pilots/${id}/transition?to_status=ACTIVE`), 'Pilot started')}>
                 Start pilot
               </button>

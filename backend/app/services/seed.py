@@ -19,7 +19,7 @@ from app.models.evidence import (Evidence, ValidationFinding, ValidationPackage,
 from app.models.evaluation import (CoiDeclaration, Evaluation, EvaluationAggregate,
                                    ExpertAssignment)
 from app.models.pilot import Milestone, PaymentPlan, Pilot, PilotKpi
-from app.models.startup import Startup
+from app.models.startup import Startup, StartupMatch
 from app.models.user import Department, User
 
 DEMO_PASSWORD = "govinnovate-demo"
@@ -547,6 +547,24 @@ def seed(db: Session, force: bool = False) -> dict:
     # AquaSense on the water challenge, sitting at AWAITING_COI. This is what makes the
     # specialist workspace show real work when the role is switched to evaluator.
     # Remove any pre-existing demo records so re-running the seed does not duplicate.
+    # AquaSense's application on the water challenge. In production this row is
+    # created by the matching engine when an officer runs matching; the demo seed
+    # materializes the engine's result directly so the Startup persona sees the
+    # application from day one (same shared record, not a copy).
+    db.query(StartupMatch).filter_by(challenge_id="CH-WTR-001", startup_id=aqua).delete()
+    db.add(StartupMatch(
+        id="M-001", challenge_id="CH-WTR-001", startup_id=aqua,
+        match_score=84, component_scores={"problemFit": 92, "technologyFit": 88, "experience": 85,
+                                          "evidence": 78, "eligibility": 100, "scalability": 82,
+                                          "risk": 85},
+        explanations={"why_matched": ["Problem-area overlap on: leakage, water, metering",
+                                      "Technology relevance: acoustic sensing, IoT telemetry",
+                                      "2 prior pilot(s) in a related domain"],
+                      "limitations": ["No independently verified pilot outcome on record"],
+                      "note": "Demo materialization of the matching engine's result."},
+        evidence_confidence="MEDIUM", eligibility_status="ELIGIBLE", rank=1,
+        run_version="matching-engine@1.3 (demo)"))
+
     db.query(ExpertAssignment).filter_by(challenge_id="CH-WTR-001", startup_id=aqua,
                                          expert_id="U-EXP1").delete()
     db.query(CoiDeclaration).filter_by(assignment_id="ASG-001", expert_id="U-EXP1").delete()

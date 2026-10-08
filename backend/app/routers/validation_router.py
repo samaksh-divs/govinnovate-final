@@ -11,6 +11,7 @@ from app.core.security import ROLE_LABELS
 from app.models.evidence import (Evidence, ValidationFinding, ValidationPackage,
                                  ValidatorAssignment, ValidationReport)
 from app.models.pilot import Pilot, PilotKpi
+from app.models.startup import Startup
 from app.models.user import User
 from app.schemas.pilot import CoiIn, ValidationFindingIn, ValidationReportIn
 from app.services.audit import audit, new_id
@@ -59,6 +60,31 @@ def list_packages(pilot_id: str | None = None, db: Session = Depends(get_db),
     if pilot_id:
         q = q.filter(ValidationPackage.pilot_id == pilot_id)
     return [_package_out(db, p) for p in q.order_by(ValidationPackage.created_at.desc()).all()]
+
+
+@router.get("/assignments")
+def list_validator_assignments(db: Session = Depends(get_db),
+                               user: User = Depends(get_current_user)):
+    """Validators see only their own assignments; oversight roles see all.
+    Data isolation: a validator can never enumerate another validator's queue."""
+    if user.role not in ("validator", "government_officer", "senior_authority", "administrator"):
+        raise HTTPException(403, "Validation assignments are restricted to validators and oversight roles.")
+    q = db.query(ValidatorAssignment)
+    if user.role == "validator":
+        q = q.filter(ValidatorAssignment.validator_id == user.id)
+    out = []
+    for a in q.order_by(ValidatorAssignment.assigned_at.desc()).all():
+        pkg = db.query(ValidationPackage).filter(ValidationPackage.id == a.package_id).first()
+        pilot = db.query(Pilot).filter(Pilot.id == pkg.pilot_id).first() if pkg else None
+        out.append({
+            "id": a.id, "coi_status": a.coi_status, "status": a.status,
+            "assigned_at": a.assigned_at.isoformat() if a.assigned_at else None,
+            "package": {"id": pkg.id, "pilot_id": pkg.pilot_id, "status": pkg.status,
+                        "evidence_count": len(pkg.evidence_ids or [])} if pkg else None,
+            "pilot": {"id": pilot.id, "name": pilot.name, "department": pilot.department,
+                      "startup_name": pilot.startup_name} if pilot else None,
+        })
+    return out
 
 
 @router.post("/packages", status_code=201)

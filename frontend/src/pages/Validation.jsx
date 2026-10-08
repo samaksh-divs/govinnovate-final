@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api } from '../services/api';
+import { api, getUser } from '../services/api';
+import { can } from '../lib/personas';
 import { Badge, Card, EmptyState, ErrorState, Loading, Modal } from '../components/ui';
 import { label } from '../lib/format';
 
@@ -16,6 +17,7 @@ export default function Validation({ notify }) {
   const [pilotFilter, setPilotFilter] = useState('');
   const [active, setActive] = useState(null); // full package for findings/report modal
   const [error, setError] = useState(null);
+  const role = getUser()?.role;
 
   const load = useCallback(() => {
     api.get(`/api/validation/packages${pilotFilter ? `?pilot_id=${pilotFilter}` : ''}`)
@@ -48,7 +50,7 @@ export default function Validation({ notify }) {
             against targets. Findings are objective: the system never labels anyone fraudulent.
           </p>
         </div>
-        <button className="btn-primary" onClick={prepare}>＋ Prepare Validation Package</button>
+        {can(role, 'EVIDENCE_REVIEW') && <button className="btn-primary" onClick={prepare}>＋ Prepare Validation Package</button>}
       </header>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -61,7 +63,7 @@ export default function Validation({ notify }) {
 
       {!packages ? <Loading /> : packages.length === 0 ? (
         <EmptyState icon="✓" title="No validation packages yet"
-          action={<button className="btn-primary mt-3" onClick={prepare}>Prepare from reviewed evidence</button>}>
+          action={can(role, 'EVIDENCE_REVIEW') ? <button className="btn-primary mt-3" onClick={prepare}>Prepare from reviewed evidence</button> : undefined}>
           Review evidence items in the Evidence repository, mark them “Ready for validation”, then prepare a package.
         </EmptyState>
       ) : (
@@ -72,19 +74,19 @@ export default function Validation({ notify }) {
               title={<div className="flex items-center gap-2"><Badge value={pkg.status} /></div>}
               right={
                 <div className="flex flex-wrap gap-2">
-                  {pkg.status === 'PREPARED' && (
+                  {pkg.status === 'PREPARED' && can(role, 'VALIDATION_ASSIGN') && (
                     <select className="rounded border border-line px-2 py-1 text-[12px]" defaultValue=""
                       onChange={(e) => e.target.value && act(pkg.id, () => api.post(`/api/validation/packages/${pkg.id}/assign?validator_id=${e.target.value}`), 'Validator assigned — COI required')}>
                       <option value="" disabled>Assign validator…</option>
                       {VALIDATORS.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
                     </select>
                   )}
-                  {pkg.status === 'VALIDATOR_ASSIGNED' && (
+                  {pkg.status === 'VALIDATOR_ASSIGNED' && can(role, 'VALIDATION_SUBMIT') && (
                     <button className="btn-secondary btn-sm" onClick={() => act(pkg.id, () => api.post(`/api/validation/packages/${pkg.id}/start`), 'Validation started')}>
                       Start validation (COI-gated)
                     </button>
                   )}
-                  {pkg.status === 'IN_VALIDATION' && (
+                  {pkg.status === 'IN_VALIDATION' && can(role, 'VALIDATION_SUBMIT') && (
                     <button className="btn-gold btn-sm" onClick={() => setActive(pkg)}>Add findings / report ↗</button>
                   )}
                 </div>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { api } from '../services/api';
+import { api, getUser } from '../services/api';
+import { can } from '../lib/personas';
 import { Badge, Card, EmptyState, ErrorState, Loading } from '../components/ui';
 import { d, label } from '../lib/format';
 
@@ -8,6 +9,7 @@ export default function ChallengeList({ notify }) {
   const [rows, setRows] = useState(null);
   const [error, setError] = useState(null);
   const nav = useNavigate();
+  const role = getUser()?.role;
 
   useEffect(() => { api.get('/api/challenges').then(setRows).catch(setError); }, []);
   if (error) return <ErrorState error={error} />;
@@ -23,7 +25,7 @@ export default function ChallengeList({ notify }) {
           <h1 className="text-primary text-headline-lg font-bold">Government Challenges</h1>
           <p className="mt-1 text-[14px] text-ink-2">Structure the right problem before searching for the right solution.</p>
         </div>
-        <Link to="/challenges/new" className="btn-primary">＋ Create Challenge</Link>
+        {can(role, 'CHALLENGE_CREATE') && <Link to="/challenges/new" className="btn-primary">＋ Create Challenge</Link>}
       </header>
 
       <div className="grid grid-cols-3 gap-4">
@@ -34,7 +36,7 @@ export default function ChallengeList({ notify }) {
 
       {rows.length === 0 ? (
         <EmptyState icon="⚐" title="No challenges yet"
-          action={<Link to="/challenges/new" className="btn-primary mt-3">Create the first challenge</Link>}>
+          action={can(role, 'CHALLENGE_CREATE') ? <Link to="/challenges/new" className="btn-primary mt-3">Create the first challenge</Link> : undefined}>
           Create a structured problem statement to start the innovation workflow.
         </EmptyState>
       ) : (

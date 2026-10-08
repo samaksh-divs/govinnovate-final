@@ -1,63 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { api, clearAuth, getUser } from '../services/api';
+import { navFor, PERSONA_META } from '../lib/personas';
 
 /**
- * Navigation mirrors the government workflow lifecycle (spec §SIDEBAR).
- * Items that live inside a module deep-link there; tooltips clarify.
+ * Navigation is role-scoped: each persona sees only its own workflow surface
+ * (see lib/personas.js). Routes, icons and the visual design are unchanged —
+ * the same links are filtered per role authority.
  */
-const NAV = [
-  { group: 'Overview', items: [['/dashboard', 'Dashboard', '▦']] },
-  {
-    group: 'Challenge & Discovery',
-    items: [
-      ['/challenges', 'Challenges', '⚐'],
-      ['/startups', 'Startups', '◎'],
-      ['/matching', 'Matching', '⇄'],
-    ],
-  },
-  {
-    group: 'Evaluation',
-    items: [
-      ['/evaluations', 'Evaluations', '✔'],
-      ['/evaluations', 'Conflict of Interest', '§', 'COI workflow · inside Evaluations'],
-    ],
-  },
-  {
-    group: 'Pilot Management',
-    items: [
-      ['/pilots', 'Pilots', '◈'],
-      ['/pilots/:id/kpis', 'KPIs', '≔', 'Pilot KPIs · inside Pilot Records'],
-      ['/pilots/:id/milestones', 'Milestones', '◫', 'Milestones & payments · inside Pilot Records'],
-    ],
-  },
-  {
-    group: 'Evidence & Validation',
-    items: [
-      ['/evidence', 'Evidence', '▤'],
-      ['/validation', 'Validation', '✓'],
-    ],
-  },
-  {
-    group: 'Decision',
-    items: [
-      ['/decisions', 'Decisions', '⚖'],
-      ['/scaleup', 'Scale-Up', '↥'],
-      ['/repilots', 'Re-Pilot', '↻'],
-    ],
-  },
-  { group: 'Procurement', items: [['/procurement', 'Procurement Preparation', '❑']] },
-  { group: 'Knowledge', items: [['/knowledge', 'Knowledge Centre', '✦']] },
-  {
-    group: 'Government Intelligence',
-    items: [
-      ['/analytics', 'Analytics', '▥'],
-      ['/govdata', 'Government Data', '⛁'],
-      ['/audit', 'Audit', '≡'],
-      ['/system', 'System Health', '⚙'],
-    ],
-  },
-];
+const NAV_BY_ROLE = Object.fromEntries(
+  ['government_officer', 'senior_authority', 'startup', 'expert', 'validator', 'administrator']
+    .map((r) => [r, navFor(r)]),
+);
 
 const ROLE_ORDER = ['government_officer', 'senior_authority', 'startup', 'expert', 'validator', 'administrator'];
 
@@ -250,11 +204,11 @@ export default function Shell({ children, onRoleSwitch, notify }) {
         <aside className={`fixed bottom-0 left-0 top-[112px] z-30 w-64 overflow-y-auto border-r border-hairline bg-white pb-6 transition-transform lg:translate-x-0
           ${open ? 'translate-x-0' : '-translate-x-full'}`}>
           <button className={`nav-close lg:hidden ${open ? '' : 'hidden'}`} onClick={() => setOpen(false)} />
-          {NAV.map((g) => (
+          {(NAV_BY_ROLE[user?.role] || NAV_BY_ROLE.government_officer).map((g) => (
             <div key={g.group} className="pt-4">
               <div className="px-5 pb-1 text-[11px] font-bold uppercase tracking-wider text-ink-2">{g.group}</div>
               <nav className="flex flex-col gap-0.5 px-2">
-                {g.items.map(([to, text, icon, title]) => (
+                {g.items.map(({ to, text, icon, title }) => (
                   <NavLink key={g.group + text} to={to} title={title || text}
                     className={({ isActive }) =>
                       `flex items-center gap-3 rounded px-3 py-2 text-[13px] font-semibold transition-colors ${
@@ -271,7 +225,7 @@ export default function Shell({ children, onRoleSwitch, notify }) {
             <p className="mono mt-1 text-ink-2">LEDGER: MH-PILOT-8821B</p>
             <p className="mt-1 text-[10px] leading-3 text-ink-2">SHA-256 = integrity, not truth.</p>
           </div>
-          {demo?.shortcuts?.challenge && (
+          {['government_officer', 'administrator'].includes(user?.role) && demo?.shortcuts?.challenge && (
             <div className="mx-4 mt-3 rounded border border-gold/30 bg-gold-soft p-3">
               <div className="text-[11px] font-bold uppercase text-[#7B341E]">Demo Story</div>
               <button className="link mt-1 block text-left text-[12px]" onClick={() => nav(`/pilots/${demo.shortcuts.water_pilot?.id || ''}`)}>

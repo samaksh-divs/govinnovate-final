@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api } from '../services/api';
+import { api, getUser } from '../services/api';
+import { can } from '../lib/personas';
 import { Badge, Card, EmptyState, ErrorState, Loading, MetricCard, Modal } from '../components/ui';
 import { label } from '../lib/format';
 
@@ -22,6 +23,18 @@ export default function Evaluations({ notify }) {
   const [assignments, setAssignments] = useState([]);
   const [aggregates, setAggregates] = useState([]);
   const [evaluating, setEvaluating] = useState(null); // assignment
+  const canEvaluate = can(getUser()?.role, 'EVALUATION_SUBMIT');
+  const canDecide = can(getUser()?.role, 'SHORTLIST_DECISION');
+  const [busy, setBusy] = useState(null);
+
+  async function decide(startupId, decision, reason) {
+    setBusy(startupId);
+    try {
+      await api.post(`/api/evaluations/decisions?challenge_id=${challengeId}&startup_id=${startupId}&decision=${decision}&reason=${encodeURIComponent(reason)}`);
+      notify(decision === 'SHORTLIST_FOR_PILOT' ? 'Application APPROVED — startup sees the updated status immediately' : 'Application rejected — startup sees the updated status immediately');
+    } catch (e) { notify(`Decision failed: ${e.message}`); }
+    finally { setBusy(null); }
+  }
   const [coiWatching, setCoiWatching] = useState(null); // { assignment, status } when declaring COI
   const [error, setError] = useState(null);
 
@@ -82,7 +95,7 @@ export default function Evaluations({ notify }) {
             {aggregates.length === 0 ? <p className="subtle">No evaluations yet for this challenge.</p> : (
               <div className="overflow-x-auto">
                 <table className="tbl">
-                  <thead><tr><th>Startup</th><th>N</th><th>Avg</th><th>Median</th><th>Min</th><th>Max</th><th>Std dev</th><th>Consensus</th><th>Recommendation</th></tr></thead>
+                  <thead><tr><th>Startup</th><th>N</th><th>Avg</th><th>Median</th><th>Min</th><th>Max</th><th>Std dev</th><th>Consensus</th><th>Recommendation</th>{canDecide && <th>Decision</th>}</tr></thead>
                   <tbody>
                     {aggregates.map((a) => (
                       <tr key={a.startup_id}>
@@ -95,6 +108,16 @@ export default function Evaluations({ notify }) {
                         <td className={a.disagreement_flag ? 'font-bold text-crimson' : ''}>{a.stddev ?? '—'}</td>
                         <td>{a.disagreement_flag ? <span className="badge-red">⚠ HIGH EVALUATOR DISAGREEMENT</span> : <span className="badge-gray">{a.consensus}</span>}</td>
                         <td><span className="badge-blue">{label(a.recommendation)}</span></td>
+                        {canDecide && (
+                          <td className="text-right">
+                            <div className="flex justify-end gap-1">
+                              <button className="btn-primary btn-sm" disabled={busy === a.startup_id}
+                                onClick={() => decide(a.startup_id, 'SHORTLIST_FOR_PILOT', 'Shortlisted for pilot based on aggregated expert evaluation')}>Approve</button>
+                              <button className="btn-secondary btn-sm" disabled={busy === a.startup_id}
+                                onClick={() => decide(a.startup_id, 'DO_NOT_SHORTLIST', 'Not shortlisted after expert evaluation review')}>Reject</button>
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -125,7 +148,7 @@ export default function Evaluations({ notify }) {
                         <td>{a.coi ? <Badge value={a.coi.status} /> : <span className="badge-gray">Pending</span>}</td>
                         <td>{a.latest_evaluation ? `${a.latest_evaluation.weighted_total} (v${a.latest_evaluation.version})` : '—'}</td>
                         <td className="text-right">
-                          {a.status !== 'RECUSED' && (
+                          {a.status !== 'RECUSED' && canEvaluate && (
                             <button className="btn-secondary btn-sm"
                               onClick={() => a.status === 'COI_CLEARED' ? setEvaluating(a) : notify('COI declaration required first')}>
                               {a.latest_evaluation ? 'View / Re-evaluate' : a.status === 'COI_CLEARED' ? 'Evaluate' : 'Declare COI'}

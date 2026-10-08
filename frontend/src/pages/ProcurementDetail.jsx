@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { api } from '../services/api';
+import { api, getUser } from '../services/api';
 import { Badge, Card, EmptyState, ErrorState, Loading } from '../components/ui';
 import { d, inr, label } from '../lib/format';
 
@@ -50,7 +50,9 @@ export default function ProcurementDetail({ notify }) {
         </div>
         <div className="flex flex-col items-end gap-2">
           <Badge value={pkg.status} />
-          <button className="btn-secondary btn-sm" onClick={generate}>↻ Regenerate package</button>
+          {['government_officer', 'administrator'].includes(getUser()?.role) && (
+            <button className="btn-secondary btn-sm" onClick={generate}>↻ Regenerate package</button>
+          )}
         </div>
       </header>
 

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api } from '../services/api';
+import { api, getUser } from '../services/api';
+import { can } from '../lib/personas';
 import { Badge, Card, EmptyState, ErrorState, Loading, Modal } from '../components/ui';
 import { dt, label } from '../lib/format';
 
@@ -14,6 +15,9 @@ export default function Evidence({ notify }) {
   const [error, setError] = useState(null);
   const fileRef = useRef();
   const formRef = useRef();
+  const role = getUser()?.role;
+  const canSubmit = can(role, 'EVIDENCE_SUBMIT');
+  const canReview = can(role, 'EVIDENCE_REVIEW');
 
   const load = useCallback(() => {
     api.get(`/api/evidence${pilotFilter ? `?pilot_id=${pilotFilter}` : ''}`).then(setRows).catch(setError);
@@ -61,7 +65,7 @@ export default function Evidence({ notify }) {
             independent validation.
           </p>
         </div>
-        <button className="btn-primary" onClick={() => setUploading(true)}>＋ Upload Evidence</button>
+        {canSubmit && <button className="btn-primary" onClick={() => setUploading(true)}>＋ Upload Evidence</button>}
       </header>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -101,14 +105,14 @@ export default function Evidence({ notify }) {
                     <td><Badge value={e.status} /></td>
                     <td className="text-[12px] text-ink-2">{e.submitted_by}<div>{dt(e.submission_date)}</div></td>
                     <td className="space-x-1 text-right whitespace-nowrap">
-                      {e.status === 'UPLOADED' && <button className="btn-secondary btn-sm" onClick={() => review(e.id, 'UNDER_REVIEW')}>Review</button>}
-                      {e.status === 'UNDER_REVIEW' && <>
+                      {canReview && e.status === 'UPLOADED' && <button className="btn-secondary btn-sm" onClick={() => review(e.id, 'UNDER_REVIEW')}>Review</button>}
+                      {canReview && e.status === 'UNDER_REVIEW' && <>
                         <button className="btn-secondary btn-sm" onClick={() => review(e.id, 'ACCEPTED_FOR_MONITORING')}>Accept</button>
                         <button className="btn-secondary btn-sm" onClick={() => review(e.id, 'NEEDS_CLARIFICATION')}>Clarify</button>
                         <button className="btn-danger btn-sm" onClick={() => review(e.id, 'REJECTED')}>Reject</button>
                       </>}
-                      {e.status === 'ACCEPTED_FOR_MONITORING' && <button className="btn-secondary btn-sm" onClick={() => review(e.id, 'READY_FOR_VALIDATION')}>Ready for validation</button>}
-                      {e.status === 'NEEDS_CLARIFICATION' && <button className="btn-secondary btn-sm" onClick={() => review(e.id, 'UNDER_REVIEW')}>Re-review</button>}
+                      {canReview && e.status === 'ACCEPTED_FOR_MONITORING' && <button className="btn-secondary btn-sm" onClick={() => review(e.id, 'READY_FOR_VALIDATION')}>Ready for validation</button>}
+                      {canReview && e.status === 'NEEDS_CLARIFICATION' && <button className="btn-secondary btn-sm" onClick={() => review(e.id, 'UNDER_REVIEW')}>Re-review</button>}
                     </td>
                   </tr>
                 ))}

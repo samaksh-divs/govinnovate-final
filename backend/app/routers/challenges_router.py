@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.deps import require
+from app.core.deps import get_current_user, require
 from app.engines.requirements_engine import get_requirements_engine
 from app.models.challenge import AiSuggestion, Challenge, Kpi
 from app.models.user import User
@@ -34,9 +34,22 @@ def kpi_to_dict(k: Kpi) -> dict:
 # CRUD
 # --------------------------------------------------------------------------
 
+VISIBLE_ROLES = {"government_officer", "administrator", "startup", "expert", "validator",
+                 "senior_authority"}
+
+
 @router.get("")
 def list_challenges(status: str | None = None, db: Session = Depends(get_db),
-                    user: User = Depends(require("CHALLENGE_CREATE"))):
+                    user: User = Depends(get_current_user)):
+    """Read endpoint. Startups browse published challenges to apply; experts see the
+    challenges they evaluate against. Only officers/admins can create or edit
+    (enforced separately below) — reading is part of every persona's workflow."""
+    if user.role not in VISIBLE_ROLES:
+        raise HTTPException(403, "This role cannot browse challenges.")
+    q = db.query(Challenge)
+    if status:
+        q = q.filter(Challenge.status == status)
+    return [_serialize(c, db) for c in q.order_by(Challenge.updated_at.desc()).all()]
     q = db.query(Challenge)
     if status:
         q = q.filter(Challenge.status == status)
@@ -57,7 +70,9 @@ def create_challenge(payload: ChallengeIn, db: Session = Depends(get_db),
 
 @router.get("/{challenge_id}")
 def get_challenge(challenge_id: str, db: Session = Depends(get_db),
-                  user: User = Depends(require("CHALLENGE_CREATE"))):
+                  user: User = Depends(get_current_user)):
+    if user.role not in VISIBLE_ROLES:
+        raise HTTPException(403, "This role cannot view challenges.")
     c = db.query(Challenge).filter(Challenge.id == challenge_id).first()
     if not c:
         raise HTTPException(404, "Challenge not found")
